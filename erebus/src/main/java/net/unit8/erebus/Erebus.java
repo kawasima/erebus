@@ -32,20 +32,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * A wrapper of aether.
+ *
  * @author kawasima
  */
 public class Erebus {
-    RepositorySystem repositorySystem;
-    RepositorySystemSession session;
-    List<RemoteRepository> remoteRepositories;
+    private RepositorySystem repositorySystem;
+    private RepositorySystemSession session;
+    private List<RemoteRepository> remoteRepositories;
 
-    Erebus(RepositorySystem repositorySystem, RepositorySystemSession session, List<RemoteRepository> remoteRepositories) {
+    private Erebus(RepositorySystem repositorySystem, RepositorySystemSession session, List<RemoteRepository> remoteRepositories) {
         this.repositorySystem = repositorySystem;
         this.session = session;
         this.remoteRepositories = remoteRepositories;
     }
 
-    public PreorderNodeListGenerator resolveInternal(String spec) throws DependencyCollectionException, DependencyResolutionException {
+    private PreorderNodeListGenerator resolveInternal(String spec) throws DependencyCollectionException, DependencyResolutionException {
         Dependency dependency = new Dependency(new DefaultArtifact(spec), "compile");
 
 
@@ -67,14 +69,37 @@ public class Erebus {
         return nlg;
     }
 
+    /**
+     * Resolve artifact dependencies represented as CLASSPATH.
+     *
+     * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
+     * @return A classpath string
+     * @throws DependencyCollectionException
+     * @throws DependencyResolutionException
+     */
     public String resolveAsClasspath(String spec) throws DependencyCollectionException, DependencyResolutionException {
         return resolveInternal(spec).getClassPath();
     }
 
+    /**
+     * Resolve artifact dependencies represented as a list of files.
+     *
+     * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
+     * @return A list of artifact files.
+     * @throws DependencyCollectionException
+     * @throws DependencyResolutionException
+     */
     public List<File> resolveAsFiles(String spec) throws DependencyCollectionException, DependencyResolutionException {
         return resolveInternal(spec).getFiles();
     }
 
+    /**
+     * Deploy a file as artifact to a remote repository.
+     *
+     * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
+     * @param file artifact file
+     * @throws DeploymentException
+     */
     public void deploy(String spec, File file) throws DeploymentException {
         DeployRequest request = new DeployRequest();
         Artifact artifact = new DefaultArtifact(spec);
@@ -83,6 +108,13 @@ public class Erebus {
         repositorySystem.deploy(session, request);
     }
 
+    /**
+     * Install a file as artifact to a local repository.
+     *
+     * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
+     * @param file artifact file
+     * @throws InstallationException
+     */
     public void install(String spec, File file) throws InstallationException {
         InstallRequest request = new InstallRequest();
         Artifact artifact = new DefaultArtifact(spec).setFile(file);

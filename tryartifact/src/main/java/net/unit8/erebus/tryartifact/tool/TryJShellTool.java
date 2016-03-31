@@ -226,7 +226,7 @@ public class TryJShellTool {
         return input != null && input.interactiveOutput();
     }
 
-    void debug(String format, Object... args) {
+    public void debug(String format, Object... args) {
         if (debug) {
             cmderr.printf(format + "\n", args);
         }
@@ -238,7 +238,7 @@ public class TryJShellTool {
      * @param format format
      * @param args args
      */
-    void rawout(String format, Object... args) {
+    public void rawout(String format, Object... args) {
         cmdout.printf(format, args);
     }
 
@@ -314,7 +314,7 @@ public class TryJShellTool {
      * @param result Result value or null
      * @param unresolved The unresolved symbols
      */
-    void custom(Feedback.FormatCase fcase, boolean update, Feedback.FormatAction fa, Feedback.FormatResolve fr,
+    public void custom(Feedback.FormatCase fcase, boolean update, Feedback.FormatAction fa, Feedback.FormatResolve fr,
                 String name, String type, String unresolved, String result) {
         String format = feedback.getFormat(fcase,
                 (update ? Feedback.FormatWhen.UPDATE : Feedback.FormatWhen.PRIMARY), fa, fr,
@@ -715,7 +715,7 @@ public class TryJShellTool {
 
     }
 
-    interface CompletionProvider {
+    public interface CompletionProvider {
         List<Suggestion> completionSuggestions(String input, int cursor, int[] anchor);
     }
 
