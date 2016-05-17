@@ -18,6 +18,7 @@ import org.eclipse.aether.impl.DefaultServiceLocator;
 import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.installation.InstallationException;
 import org.eclipse.aether.repository.LocalRepository;
+import org.eclipse.aether.repository.Proxy;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.resolution.DependencyResolutionException;
@@ -28,6 +29,8 @@ import org.eclipse.aether.transport.http.HttpTransporterFactory;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,7 +59,6 @@ public class Erebus {
         for (RemoteRepository remote : remoteRepositories) {
             collectRequest.addRepository(remote);
         }
-
         DependencyNode node = repositorySystem.collectDependencies(session, collectRequest).getRoot();
 
         DependencyRequest dependencyRequest = new DependencyRequest();
@@ -70,7 +72,7 @@ public class Erebus {
     }
 
     /**
-     * Resolve artifact dependencies represented as CLASSPATH.
+     * Resolves artifact dependencies represented as CLASSPATH.
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @return A classpath string
@@ -82,7 +84,7 @@ public class Erebus {
     }
 
     /**
-     * Resolve artifact dependencies represented as a list of files.
+     * Resolves artifact dependencies represented as a list of files.
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @return A list of artifact files.
@@ -94,7 +96,7 @@ public class Erebus {
     }
 
     /**
-     * Deploy a file as artifact to a remote repository.
+     * Deploys a file as artifact to a remote repository.
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @param file artifact file
@@ -109,7 +111,7 @@ public class Erebus {
     }
 
     /**
-     * Install a file as artifact to a local repository.
+     * Installs a file as artifact to a local repository.
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @param file artifact file
@@ -125,10 +127,21 @@ public class Erebus {
 
     public static final class Builder {
         private List<RemoteRepository> remoteRepositories;
-        private RemoteRepository defaultRemoteRepository = new RemoteRepository.Builder("central", "default", "http://repo1.maven.org/maven2/").build();
+        private RemoteRepository defaultRemoteRepository;
 
         public Builder() {
             remoteRepositories = new ArrayList<>();
+            RemoteRepository.Builder repoBuilder = new RemoteRepository.Builder("central", "default", "http://repo1.maven.org/maven2/");
+            String httpProxy = System.getenv("http_proxy");
+            if (httpProxy != null) {
+                try {
+                    URL proxyUrl = new URL(httpProxy);
+                    repoBuilder.setProxy(new Proxy(proxyUrl.getProtocol(), proxyUrl.getHost(), proxyUrl.getPort()));
+                } catch (MalformedURLException ignore) {
+
+                }
+            }
+            defaultRemoteRepository = repoBuilder.build();
         }
 
         public Builder addRemote(RemoteRepository repository) {
@@ -157,7 +170,6 @@ public class Erebus {
 
             LocalRepository localRepo = new LocalRepository(System.getProperty("user.home") + "/.m2/repository");
             session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
-
             return session;
         }
 

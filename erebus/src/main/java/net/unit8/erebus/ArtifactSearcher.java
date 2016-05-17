@@ -18,9 +18,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +34,7 @@ public class ArtifactSearcher {
 
     private XPath xpath = XPathFactory.newInstance().newXPath();
     private DocumentBuilder builder;
+    private Proxy proxy;
 
     public ArtifactSearcher() {
         try {
@@ -43,13 +42,26 @@ public class ArtifactSearcher {
         } catch (ParserConfigurationException e) {
             throw new IllegalStateException(e);
         }
+
+        try {
+            String httpProxy = System.getenv("http_proxy");
+            if (httpProxy != null) {
+                URL proxyUrl = new URL(httpProxy);
+                proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyUrl.getHost(), proxyUrl.getPort()));
+            }
+        } catch (MalformedURLException ignore) {
+
+        }
     }
 
     private List<Artifact> searchInternal(String query) throws IOException {
         LOG.debug("Query: {}", query);
         List<Artifact> artifacts = new ArrayList<>();
         URL url = URI.create("http://search.maven.org/solrsearch/select?rows=20&wt=xml&q=" + query).toURL();
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+        HttpURLConnection conn = proxy == null ?
+                (HttpURLConnection) url.openConnection() : (HttpURLConnection) url.openConnection(proxy);
+
         conn.setConnectTimeout(500);
         conn.setReadTimeout(1000);
 
