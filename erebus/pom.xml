@@ -11,7 +11,7 @@
 
     <groupId>net.unit8.erebus</groupId>
     <artifactId>erebus</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.1.1</version>
     <packaging>jar</packaging>
 
     <name>erebus</name>
