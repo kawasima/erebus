@@ -15,7 +15,8 @@ public class ErebusTest {
     @Test
     public void resolveAsClasspath() throws DependencyCollectionException, DependencyResolutionException {
         Erebus erebus = new Erebus.Builder().build();
-        String cp = erebus.resolveAsClasspath("commons-lang:commons-lang:2.4");
+        String cp = erebus.resolveAsClasspath("commons-lang:commons-lang:2.4")
+                .replace(File.separatorChar, '/');
         assertTrue(cp.endsWith("/commons-lang/commons-lang/2.4/commons-lang-2.4.jar"));
     }
 
@@ -27,6 +28,7 @@ public class ErebusTest {
         assertNotNull(artifacts);
         assertEquals(1, artifacts.size());
         assertTrue(artifacts.get(0).getAbsolutePath()
+                .replace(File.separatorChar, '/')
                 .endsWith("/commons-lang/commons-lang/2.4/commons-lang-2.4.jar"));
     }
 
