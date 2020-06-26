@@ -1,8 +1,10 @@
 package net.unit8.erebus;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author kawasima
@@ -11,20 +13,30 @@ public class ArtifactSearcherTest {
     @Test
     public void search() throws IOException {
         ArtifactSearcher searcher = new ArtifactSearcher();
-        System.out.println(searcher.search("commons-lang"));
+        assertThat(searcher.search("commons-lang"))
+                .allMatch(artifact -> artifact.getGroupId().contains("commons-lang")
+                        || artifact.getArtifactId().contains("commons-lang"));
     }
 
     @Test
     public void searchIncremental() throws IOException {
         ArtifactSearcher searcher = new ArtifactSearcher();
-        System.out.println(searcher.searchIncremental("org.apache.commons"));
-        System.out.println(searcher.searchIncremental("commons-lang"));
-        System.out.println(searcher.searchIncremental("org.apache.commons:commons-lan"));
+
+        assertThat(searcher.searchIncremental("org.apache.commons:"))
+                .allMatch(artifact -> artifact.getGroupId().contains("org.apache.commons"));
+        assertThat(searcher.searchIncremental("org.apache.commons:commons-lan"))
+                .allMatch(artifact -> artifact.getGroupId().contains("org.apache.commons")
+                        && artifact.getArtifactId().contains("commons-lan"));
     }
 
     @Test
     public void searchIncrementalForVersion() throws IOException {
+        String groupId = "org.apache.commons";
+        String artifactId = "commons-lang";
         ArtifactSearcher searcher = new ArtifactSearcher();
-        System.out.println(searcher.searchIncremental("org.apache.commons:commons-lang3:3."));
+        assertThat(searcher.searchIncremental(groupId + ":" + artifactId + ":3."))
+                .allMatch(artifact -> artifact.getGroupId().equals(groupId)
+                        && artifact.getArtifactId().equals(artifactId)
+                        && artifact.getVersion().startsWith("3."));
     }
 }

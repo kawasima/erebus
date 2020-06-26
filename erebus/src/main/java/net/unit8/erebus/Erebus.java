@@ -40,9 +40,9 @@ import java.util.List;
  * @author kawasima
  */
 public class Erebus {
-    private RepositorySystem repositorySystem;
-    private RepositorySystemSession session;
-    private List<RemoteRepository> remoteRepositories;
+    private final RepositorySystem repositorySystem;
+    private final RepositorySystemSession session;
+    private final List<RemoteRepository> remoteRepositories;
 
     private Erebus(RepositorySystem repositorySystem, RepositorySystemSession session, List<RemoteRepository> remoteRepositories) {
         this.repositorySystem = repositorySystem;
@@ -76,8 +76,9 @@ public class Erebus {
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @return A classpath string
-     * @throws DependencyCollectionException
-     * @throws DependencyResolutionException
+     * @throws DependencyCollectionException If the dependency tree could not be built.
+     * @throws DependencyResolutionException If the dependency tree could not be built or any dependency artifact could
+     *             not be resolved.
      */
     public String resolveAsClasspath(String spec) throws DependencyCollectionException, DependencyResolutionException {
         return resolveInternal(spec).getClassPath();
@@ -88,8 +89,9 @@ public class Erebus {
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @return A list of artifact files.
-     * @throws DependencyCollectionException
-     * @throws DependencyResolutionException
+     * @throws DependencyCollectionException If the dependency tree could not be built.
+     * @throws DependencyResolutionException If the dependency tree could not be built or any dependency artifact could
+     *             not be resolved.
      */
     public List<File> resolveAsFiles(String spec) throws DependencyCollectionException, DependencyResolutionException {
         return resolveInternal(spec).getFiles();
@@ -100,7 +102,7 @@ public class Erebus {
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @param file artifact file
-     * @throws DeploymentException
+     * @throws DeploymentException If any artifact/metadata from the request could not be deployed.
      */
     public void deploy(String spec, File file) throws DeploymentException {
         DeployRequest request = new DeployRequest();
@@ -115,7 +117,7 @@ public class Erebus {
      *
      * @param spec &lt;groupId&gt;:&lt;artifactId&gt;[:&lt;extension&gt;[:&lt;classifier&gt;]]:&lt;version&gt;
      * @param file artifact file
-     * @throws InstallationException
+     * @throws InstallationException If any artifact/metadata from the request could not be installed.
      */
     public void install(String spec, File file) throws InstallationException {
         InstallRequest request = new InstallRequest();
@@ -126,8 +128,8 @@ public class Erebus {
 
 
     public static final class Builder {
-        private List<RemoteRepository> remoteRepositories;
-        private RemoteRepository defaultRemoteRepository;
+        private final List<RemoteRepository> remoteRepositories;
+        private final RemoteRepository defaultRemoteRepository;
 
         public Builder() {
             remoteRepositories = new ArrayList<>();

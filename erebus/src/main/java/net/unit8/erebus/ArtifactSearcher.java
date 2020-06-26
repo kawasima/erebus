@@ -9,6 +9,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -32,8 +33,8 @@ import java.util.List;
 public class ArtifactSearcher {
     private static final Logger LOG = LoggerFactory.getLogger(ArtifactSearcher.class);
 
-    private XPath xpath = XPathFactory.newInstance().newXPath();
-    private DocumentBuilder builder;
+    private final XPath xpath = XPathFactory.newInstance().newXPath();
+    private final DocumentBuilder builder;
     private Proxy proxy;
 
     public ArtifactSearcher() {
@@ -57,10 +58,10 @@ public class ArtifactSearcher {
     private List<Artifact> searchInternal(String query) throws IOException {
         LOG.debug("Query: {}", query);
         List<Artifact> artifacts = new ArrayList<>();
-        URL url = URI.create("http://search.maven.org/solrsearch/select?rows=20&wt=xml&q=" + query).toURL();
+        URL url = URI.create("https://search.maven.org/solrsearch/select?rows=20&wt=xml&q=" + query).toURL();
 
-        HttpURLConnection conn = proxy == null ?
-                (HttpURLConnection) url.openConnection() : (HttpURLConnection) url.openConnection(proxy);
+        HttpsURLConnection conn = proxy == null ?
+                (HttpsURLConnection) url.openConnection() : (HttpsURLConnection) url.openConnection(proxy);
 
         conn.setConnectTimeout(500);
         conn.setReadTimeout(1000);

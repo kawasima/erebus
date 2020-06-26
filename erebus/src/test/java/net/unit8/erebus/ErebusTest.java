@@ -2,11 +2,13 @@ package net.unit8.erebus;
 
 import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.resolution.DependencyResolutionException;
-import static org.junit.Assert.*;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author kawasima
@@ -17,7 +19,7 @@ public class ErebusTest {
         Erebus erebus = new Erebus.Builder().build();
         String cp = erebus.resolveAsClasspath("commons-lang:commons-lang:2.4")
                 .replace(File.separatorChar, '/');
-        assertTrue(cp.endsWith("/commons-lang/commons-lang/2.4/commons-lang-2.4.jar"));
+        assertThat(cp).endsWith("/commons-lang/commons-lang/2.4/commons-lang-2.4.jar");
     }
 
     @Test
@@ -25,11 +27,10 @@ public class ErebusTest {
         Erebus erebus = new Erebus.Builder().build();
         List<File> artifacts = erebus.resolveAsFiles("commons-lang:commons-lang:2.4");
 
-        assertNotNull(artifacts);
-        assertEquals(1, artifacts.size());
-        assertTrue(artifacts.get(0).getAbsolutePath()
-                .replace(File.separatorChar, '/')
-                .endsWith("/commons-lang/commons-lang/2.4/commons-lang-2.4.jar"));
+        Assertions.assertNotNull(artifacts);
+        assertThat(artifacts).hasSize(1);
+        assertThat(artifacts.get(0).getAbsolutePath().replace(File.separatorChar, '/'))
+                .endsWith("/commons-lang/commons-lang/2.4/commons-lang-2.4.jar");
     }
 
 }
