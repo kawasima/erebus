@@ -1,6 +1,5 @@
 package net.unit8.erebus;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
@@ -9,12 +8,10 @@ import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.collection.DependencyCollectionException;
-import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory;
 import org.eclipse.aether.deployment.DeployRequest;
 import org.eclipse.aether.deployment.DeploymentException;
 import org.eclipse.aether.graph.Dependency;
 import org.eclipse.aether.graph.DependencyNode;
-import org.eclipse.aether.impl.DefaultServiceLocator;
 import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.installation.InstallationException;
 import org.eclipse.aether.repository.LocalRepository;
@@ -22,14 +19,12 @@ import org.eclipse.aether.repository.Proxy;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.DependencyRequest;
 import org.eclipse.aether.resolution.DependencyResolutionException;
-import org.eclipse.aether.spi.connector.RepositoryConnectorFactory;
-import org.eclipse.aether.spi.connector.transport.TransporterFactory;
-import org.eclipse.aether.transport.file.FileTransporterFactory;
-import org.eclipse.aether.transport.http.HttpTransporterFactory;
+import org.eclipse.aether.supplier.RepositorySystemSupplier;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 
 import java.io.File;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -108,7 +103,7 @@ public class Erebus {
         DeployRequest request = new DeployRequest();
         Artifact artifact = new DefaultArtifact(spec);
         artifact.setFile(file);
-        request.setArtifacts(ImmutableList.of(artifact));
+        request.setArtifacts(List.of(artifact));
         repositorySystem.deploy(session, request);
     }
 
@@ -122,7 +117,7 @@ public class Erebus {
     public void install(String spec, File file) throws InstallationException {
         InstallRequest request = new InstallRequest();
         Artifact artifact = new DefaultArtifact(spec).setFile(file);
-        request.setArtifacts(ImmutableList.of(artifact));
+        request.setArtifacts(List.of(artifact));
         repositorySystem.install(session, request);
     }
 
@@ -137,7 +132,7 @@ public class Erebus {
             String httpProxy = System.getenv("http_proxy");
             if (httpProxy != null) {
                 try {
-                    URL proxyUrl = new URL(httpProxy);
+                    URL proxyUrl = URI.create(httpProxy).toURL();
                     repoBuilder.setProxy(new Proxy(proxyUrl.getProtocol(), proxyUrl.getHost(), proxyUrl.getPort()));
                 } catch (MalformedURLException ignore) {
 
@@ -159,12 +154,8 @@ public class Erebus {
         }
 
         private static RepositorySystem newRepositorySystem() {
-            DefaultServiceLocator locator = MavenRepositorySystemUtils.newServiceLocator();
-            locator.addService(RepositoryConnectorFactory.class, BasicRepositoryConnectorFactory.class );
-            locator.addService(TransporterFactory.class, FileTransporterFactory.class );
-            locator.addService(TransporterFactory.class, HttpTransporterFactory.class );
-
-            return locator.getService( RepositorySystem.class );
+            RepositorySystemSupplier repositorySystemSupplier = new RepositorySystemSupplier();
+            return repositorySystemSupplier.get();
         }
 
         private static RepositorySystemSession newSession(RepositorySystem system) {
