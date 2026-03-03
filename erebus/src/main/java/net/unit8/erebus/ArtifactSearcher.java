@@ -24,11 +24,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A Searcher for artifacts.
+ * Searches for Maven artifacts via the
+ * <a href="https://central.sonatype.com/search">Maven Central</a> Solr REST API
+ * ({@code https://search.maven.org/solrsearch/select}).
  *
- * Using search.maven.org REST API.
+ * <p>Two search modes are provided:</p>
+ * <ul>
+ *   <li>{@link #search(String)} – free-text search by keyword.</li>
+ *   <li>{@link #searchIncremental(String)} – coordinate-aware search that parses a partial
+ *       {@code groupId:artifactId:version} string and builds a structured Solr query,
+ *       making it suitable for incremental / autocomplete use-cases.</li>
+ * </ul>
+ *
+ * <p>Example – keyword search:</p>
+ * <pre>{@code
+ * ArtifactSearcher searcher = new ArtifactSearcher();
+ * List<Artifact> results = searcher.search("commons-lang");
+ * }</pre>
+ *
+ * <p>Example – incremental search:</p>
+ * <pre>{@code
+ * // Returns artifacts whose groupId starts with "org.apache.commons"
+ * List<Artifact> byGroup = searcher.searchIncremental("org.apache.commons:");
+ *
+ * // Returns artifacts matching groupId + partial artifactId
+ * List<Artifact> byGroupAndArtifact = searcher.searchIncremental("org.apache.commons:commons-lan");
+ *
+ * // Returns artifacts matching all three coordinates with a partial version
+ * List<Artifact> byVersion = searcher.searchIncremental("org.apache.commons:commons-lang3:3.");
+ * }</pre>
+ *
+ * <p>Proxy settings are read from the following environment variables (first non-null wins):
+ * {@code https_proxy}, {@code HTTPS_PROXY}, {@code http_proxy}, {@code HTTP_PROXY}.</p>
+ *
+ * <p>Results are limited to 20 entries per query (the API default).</p>
  *
  * @author kawasima
+ * @see Erebus
  */
 public class ArtifactSearcher {
     private static final Logger LOG = LoggerFactory.getLogger(ArtifactSearcher.class);
@@ -37,6 +69,15 @@ public class ArtifactSearcher {
     private final DocumentBuilder builder;
     private Proxy proxy;
 
+    /**
+     * Creates a new {@code ArtifactSearcher}.
+     *
+     * <p>Proxy settings are auto-detected from the environment variables
+     * {@code https_proxy}, {@code HTTPS_PROXY}, {@code http_proxy}, {@code HTTP_PROXY}
+     * (first non-null wins). If none are set, connections are made directly.</p>
+     *
+     * @throws IllegalStateException if the underlying XML parser cannot be configured
+     */
     public ArtifactSearcher() {
         try {
             builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -44,15 +85,26 @@ public class ArtifactSearcher {
             throw new IllegalStateException(e);
         }
 
-        try {
-            String httpProxy = System.getenv("http_proxy");
-            if (httpProxy != null) {
-                URL proxyUrl = new URL(httpProxy);
+        String proxyEnv = firstNonNull(
+                System.getenv("https_proxy"),
+                System.getenv("HTTPS_PROXY"),
+                System.getenv("http_proxy"),
+                System.getenv("HTTP_PROXY"));
+        if (proxyEnv != null) {
+            try {
+                URL proxyUrl = URI.create(proxyEnv).toURL();
                 proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyUrl.getHost(), proxyUrl.getPort()));
+            } catch (MalformedURLException ignore) {
             }
-        } catch (MalformedURLException ignore) {
-
         }
+    }
+
+    @SafeVarargs
+    private static <T> T firstNonNull(T... values) {
+        for (T v : values) {
+            if (v != null) return v;
+        }
+        return null;
     }
 
     private List<Artifact> searchInternal(String query) throws IOException {
@@ -89,7 +141,17 @@ public class ArtifactSearcher {
         return artifacts;
     }
 
-    public List<Artifact> search(String coords) throws IOException{
+    /**
+     * Searches Maven Central for artifacts matching the given free-text keyword.
+     *
+     * <p>The {@code coords} string is passed directly as the Solr {@code q} parameter,
+     * so Solr query syntax is supported (e.g., {@code "commons-lang"}, {@code "guava"}).</p>
+     *
+     * @param coords free-text search keyword or Solr query expression
+     * @return up to 20 matching artifacts; never {@code null}
+     * @throws IOException if the search API cannot be reached or returns an unparseable response
+     */
+    public List<Artifact> search(String coords) throws IOException {
         return searchInternal(coords);
     }
 
@@ -99,6 +161,33 @@ public class ArtifactSearcher {
         return cnt;
     }
 
+    /**
+     * Searches Maven Central using a partial Maven coordinate string, suitable for
+     * incremental / autocomplete scenarios.
+     *
+     * <p>The {@code coords} argument is interpreted according to the number of
+     * {@code ':'} separators present:</p>
+     *
+     * <table border="1">
+     *   <caption>Coordinate parsing rules</caption>
+     *   <tr><th>Input example</th><th>Solr query generated</th></tr>
+     *   <tr><td>{@code "commons-lang"}</td>
+     *       <td>Free-text wildcard: {@code commons-lang~}</td></tr>
+     *   <tr><td>{@code "org.apache.commons:"}</td>
+     *       <td>Group filter: {@code g:org.apache.commons AND a:*}</td></tr>
+     *   <tr><td>{@code "org.apache.commons:commons-lan"}</td>
+     *       <td>Group + artifact prefix: {@code g:org.apache.commons AND a:commons-lan*}</td></tr>
+     *   <tr><td>{@code "org.apache.commons:commons-lang3:3."}</td>
+     *       <td>Group + artifact + version prefix: {@code g:... AND a:... AND v:3.*}</td></tr>
+     * </table>
+     *
+     * <p>A trailing {@code ':'} is stripped before parsing.</p>
+     *
+     * @param coords partial Maven coordinate ({@code groupId}, {@code groupId:artifactId},
+     *               or {@code groupId:artifactId:version}), optionally ending with {@code ':'}
+     * @return up to 20 matching artifacts; never {@code null}
+     * @throws IOException if the search API cannot be reached or returns an unparseable response
+     */
     public List<Artifact> searchIncremental(String coords) throws IOException {
         if (coords.endsWith(":"))
             coords = coords.substring(0, coords.length() - 1);
