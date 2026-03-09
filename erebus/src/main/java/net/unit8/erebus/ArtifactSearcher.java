@@ -80,12 +80,14 @@ public class ArtifactSearcher {
      */
     public ArtifactSearcher() {
         try {
-            builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            builder = factory.newDocumentBuilder();
         } catch (ParserConfigurationException e) {
             throw new IllegalStateException(e);
         }
 
-        String proxyEnv = firstNonNull(
+        String proxyEnv = Erebus.firstNonNull(
                 System.getenv("https_proxy"),
                 System.getenv("HTTPS_PROXY"),
                 System.getenv("http_proxy"),
@@ -94,17 +96,10 @@ public class ArtifactSearcher {
             try {
                 URL proxyUrl = URI.create(proxyEnv).toURL();
                 proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyUrl.getHost(), proxyUrl.getPort()));
-            } catch (MalformedURLException ignore) {
+            } catch (MalformedURLException e) {
+                LOG.warn("Invalid proxy URL: {}", proxyEnv, e);
             }
         }
-    }
-
-    @SafeVarargs
-    private static <T> T firstNonNull(T... values) {
-        for (T v : values) {
-            if (v != null) return v;
-        }
-        return null;
     }
 
     private List<Artifact> searchInternal(String query) throws IOException {

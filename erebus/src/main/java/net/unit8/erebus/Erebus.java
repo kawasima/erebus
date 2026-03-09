@@ -22,6 +22,9 @@ import org.eclipse.aether.resolution.DependencyResolutionException;
 import org.eclipse.aether.supplier.RepositorySystemSupplier;
 import org.eclipse.aether.util.graph.visitor.PreorderNodeListGenerator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -57,9 +60,19 @@ import java.util.List;
  * @see ArtifactSearcher
  */
 public class Erebus {
+    private static final Logger LOG = LoggerFactory.getLogger(Erebus.class);
+
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession session;
     private final List<RemoteRepository> remoteRepositories;
+
+    @SafeVarargs
+    static <T> T firstNonNull(T... values) {
+        for (T v : values) {
+            if (v != null) return v;
+        }
+        return null;
+    }
 
     private Erebus(RepositorySystem repositorySystem, RepositorySystemSession session, List<RemoteRepository> remoteRepositories) {
         this.repositorySystem = repositorySystem;
@@ -133,6 +146,36 @@ public class Erebus {
      */
     public List<File> resolveAsFiles(String spec) throws DependencyCollectionException, DependencyResolutionException {
         return resolveInternal(spec).getFiles();
+    }
+
+    /**
+     * Resolves an artifact and all its transitive compile-scope dependencies, returning the
+     * root of the dependency tree as a {@link DependencyNode}.
+     *
+     * <p>The returned tree can be traversed via {@link DependencyNode#getChildren()} or
+     * using the visitor pattern with {@link DependencyNode#accept(org.eclipse.aether.graph.DependencyVisitor)}.</p>
+     *
+     * @param spec artifact coordinates in the form
+     *             {@code <groupId>:<artifactId>[:<extension>[:<classifier>]]:<version>}
+     * @return the root node of the resolved dependency tree
+     * @throws DependencyCollectionException if the dependency tree could not be built
+     * @throws DependencyResolutionException if any artifact in the dependency tree could not be resolved
+     */
+    public DependencyNode resolveAsDependencyNode(String spec) throws DependencyCollectionException, DependencyResolutionException {
+        Dependency dependency = new Dependency(new DefaultArtifact(spec), "compile");
+
+        CollectRequest collectRequest = new CollectRequest();
+        collectRequest.setRoot(dependency);
+        for (RemoteRepository remote : remoteRepositories) {
+            collectRequest.addRepository(remote);
+        }
+        DependencyNode node = repositorySystem.collectDependencies(session, collectRequest).getRoot();
+
+        DependencyRequest dependencyRequest = new DependencyRequest();
+        dependencyRequest.setRoot(node);
+        repositorySystem.resolveDependencies(session, dependencyRequest);
+
+        return node;
     }
 
     /**
@@ -214,18 +257,11 @@ public class Erebus {
                 try {
                     URL proxyUrl = URI.create(proxyEnv).toURL();
                     repoBuilder.setProxy(new Proxy(proxyUrl.getProtocol(), proxyUrl.getHost(), proxyUrl.getPort()));
-                } catch (MalformedURLException ignore) {
+                } catch (MalformedURLException e) {
+                    LOG.warn("Invalid proxy URL: {}", proxyEnv, e);
                 }
             }
             defaultRemoteRepository = repoBuilder.build();
-        }
-
-        @SafeVarargs
-        private static <T> T firstNonNull(T... values) {
-            for (T v : values) {
-                if (v != null) return v;
-            }
-            return null;
         }
 
         /**

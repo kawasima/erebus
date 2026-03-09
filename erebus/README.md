@@ -15,7 +15,7 @@ Add to your `pom.xml`:
 <dependency>
     <groupId>net.unit8.erebus</groupId>
     <artifactId>erebus</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 
